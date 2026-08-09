@@ -1,0 +1,137 @@
+{% extends 'tracker/base.html' %}
+
+{% block title %}{{ title }} - Personal Finance Tracker{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center my-4">
+    <div class="col-12 col-md-8 col-lg-6">
+        <div class="card card-custom p-4 shadow-lg border-0">
+            <div class="d-flex align-items-center justify-content-between mb-4 border-bottom pb-3">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="icon-box bg-primary rounded-3 text-white">
+                        <i class="bi {% if expense %}bi-pencil-square{% else %}bi-plus-circle-fill{% endif %} fs-4"></i>
+                    </div>
+                    <div>
+                        <h4 class="fw-bold text-dark mb-0">{{ title }}</h4>
+                        <p class="text-muted small mb-0">Record transaction details accurately</p>
+                    </div>
+                </div>
+                <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary btn-sm rounded-circle" style="width: 36px; height: 36px; line-height: 24px;" title="Cancel & Return">
+                    <i class="bi bi-x-lg"></i>
+                </a>
+            </div>
+
+            <form method="post" novalidate>
+                {% csrf_token %}
+
+                {% if form.non_field_errors %}
+                    <div class="alert alert-danger py-2 small rounded-3">
+                        {% for error in form.non_field_errors %}
+                            <div>{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+
+                <!-- Expense Title -->
+                <div class="mb-3">
+                    <label for="{{ form.title.id_for_label }}" class="form-label fw-semibold small text-muted">
+                        Expense Title <span class="text-danger">*</span>
+                    </label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light text-muted"><i class="bi bi-fonts"></i></span>
+                        {{ form.title }}
+                    </div>
+                    {% for error in form.title.errors %}
+                        <div class="text-danger small mt-1">{{ error }}</div>
+                    {% endfor %}
+                </div>
+
+                <!-- Amount & Date Row -->
+                <div class="row g-3 mb-3">
+                    <div class="col-12 col-sm-6">
+                        <label for="{{ form.amount.id_for_label }}" class="form-label fw-semibold small text-muted">
+                            Amount ($) <span class="text-danger">*</span>
+                        </label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light text-muted"><i class="bi bi-currency-dollar"></i></span>
+                            {{ form.amount }}
+                        </div>
+                        {% for error in form.amount.errors %}
+                            <div class="text-danger small mt-1">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="col-12 col-sm-6">
+                        <label for="{{ form.date.id_for_label }}" class="form-label fw-semibold small text-muted">
+                            Date <span class="text-danger">*</span>
+                        </label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light text-muted"><i class="bi bi-calendar-event"></i></span>
+                            {{ form.date }}
+                        </div>
+                        {% for error in form.date.errors %}
+                            <div class="text-danger small mt-1">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Category Section: Choose existing OR Type New -->
+                <div class="mb-3">
+                    <label for="{{ form.category.id_for_label }}" class="form-label fw-semibold small text-muted mb-1">
+                        Select Existing Category
+                    </label>
+                    <div class="input-group mb-2">
+                        <span class="input-group-text bg-light text-muted"><i class="bi bi-tag"></i></span>
+                        {{ form.category }}
+                    </div>
+
+                    <div class="text-center my-2 position-relative">
+                        <hr class="my-1">
+                        <span class="position-absolute top-50 start-50 translate-middle bg-white px-2 small text-muted">OR</span>
+                    </div>
+
+                    <label for="{{ form.new_category_name.id_for_label }}" class="form-label fw-semibold small text-muted mb-1">
+                        Type a New Category (On the fly)
+                    </label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light text-muted"><i class="bi bi-plus-circle"></i></span>
+                        {{ form.new_category_name }}
+                    </div>
+                    <datalist id="categoryDatalist">
+                        {% for cat in form.fields.category.queryset %}
+                            <option value="{{ cat.name }}"></option>
+                        {% endfor %}
+                    </datalist>
+                    <div class="form-text text-muted small">Type any custom category name here to automatically create & assign it!</div>
+
+                    {% for error in form.category.errors %}
+                        <div class="text-danger small mt-1">{{ error }}</div>
+                    {% endfor %}
+                    {% for error in form.new_category_name.errors %}
+                        <div class="text-danger small mt-1">{{ error }}</div>
+                    {% endfor %}
+                </div>
+
+                <!-- Description / Notes -->
+                <div class="mb-4">
+                    <label for="{{ form.description.id_for_label }}" class="form-label fw-semibold small text-muted">
+                        Description / Notes
+                    </label>
+                    {{ form.description }}
+                    {% for error in form.description.errors %}
+                        <div class="text-danger small mt-1">{{ error }}</div>
+                    {% endfor %}
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="d-flex align-items-center justify-content-end gap-2 border-top pt-3">
+                    <a href="{% url 'dashboard' %}" class="btn btn-light rounded-pill px-4">Cancel</a>
+                    <button type="submit" class="btn btn-primary-gradient rounded-pill px-4">
+                        <i class="bi bi-check-lg me-1"></i> Save Expense
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,13 @@
+[tool.pyright]
+venvPath = "."
+venv = "venv"
+extraPaths = ["venv/Lib/site-packages"]
+reportMissingImports = false
+reportAttributeAccessIssue = false
+reportGeneralTypeIssues = false
+
+[tool.pyrefly]
+python-version = "3.13"
+search-paths = ["venv/Lib/site-packages", "."]
+ignore-missing-imports = true
+disabled-rules = ["missing-import", "unknown-attribute", "type-error"]

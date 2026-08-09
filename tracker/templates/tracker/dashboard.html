@@ -1,0 +1,433 @@
+{% extends 'tracker/base.html' %}
+
+{% block title %}Dashboard - Personal Finance Tracker{% endblock %}
+
+{% block content %}
+<!-- Top Header & Action Buttons -->
+<div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between mb-4 gap-3">
+    <div>
+        <h2 class="fw-extrabold text-dark mb-1">Financial Dashboard</h2>
+        <p class="text-muted mb-0">Track expenditures, monitor budgets, and gain spending insights.</p>
+    </div>
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+        <button type="button" class="btn btn-outline-primary btn-sm rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#budgetModal">
+            <i class="bi bi-piggy-bank me-1"></i> Set Monthly Budget
+        </button>
+        <a href="{% url 'category_list' %}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+            <i class="bi bi-plus-circle me-1"></i> Manage Categories
+        </a>
+        <a href="{% url 'expense_add' %}" class="btn btn-primary-gradient btn-sm rounded-pill px-3 shadow-sm">
+            <i class="bi bi-plus-lg me-1"></i> Log New Expense
+        </a>
+    </div>
+</div>
+
+<!-- KPI Metric Cards Row -->
+<div class="row g-3 mb-4">
+    <!-- Card 1: Total Spent -->
+    <div class="col-12 col-sm-6 col-xl-3">
+        <div class="kpi-card primary shadow-sm">
+            <div class="kpi-title">
+                {% if is_filtered %}Filtered Spending{% else %}Total Spending{% endif %}
+            </div>
+            <div class="kpi-value">${{ total_filtered_spent|floatformat:2 }}</div>
+            <div class="d-flex align-items-center justify-content-between small opacity-75 mt-2">
+                <span><i class="bi bi-receipt me-1"></i> {{ transaction_count }} Transactions</span>
+                {% if is_filtered %}
+                    <span class="badge bg-white text-primary fw-bold">Filtered</span>
+                {% else %}
+                    <span>Total Recorded</span>
+                {% endif %}
+            </div>
+            <i class="bi bi-wallet2 kpi-icon"></i>
+        </div>
+    </div>
+
+    <!-- Card 2: Current Month Budget Progress -->
+    <div class="col-12 col-sm-6 col-xl-3">
+        {% if is_over_budget %}
+            <div class="kpi-card danger shadow-sm">
+        {% elif budget_percentage >= 75 %}
+            <div class="kpi-card warning shadow-sm">
+        {% else %}
+            <div class="kpi-card success shadow-sm">
+        {% endif %}
+            <div class="kpi-title d-flex justify-content-between align-items-center">
+                <span>Budget ({{ current_month_name }})</span>
+                <a href="#" data-bs-toggle="modal" data-bs-target="#budgetModal" class="text-white text-decoration-none opacity-75 hover-opacity-100" title="Edit Budget">
+                    <i class="bi bi-pencil-square"></i>
+                </a>
+            </div>
+            
+            <div class="kpi-value">${{ current_month_spent|floatformat:2 }}</div>
+
+            {% if budget_limit %}
+                <div class="progress progress-custom mb-2">
+                    <div class="progress-bar progress-bar-animated-custom {% if is_over_budget %}bg-dark{% else %}bg-white{% endif %}" role="progressbar" data-width="{{ budget_percentage }}%" aria-valuenow="{{ budget_percentage }}" aria-valuemin="0" aria-valuemax="100"></div>
+                </div>
+                <div class="d-flex justify-content-between align-items-center small opacity-90">
+                    <span>{{ budget_percentage }}% of ${{ budget_limit|floatformat:2 }}</span>
+                    {% if is_over_budget %}
+                        <span class="fw-bold text-warning"><i class="bi bi-exclamation-triangle-fill"></i> Exceeded!</span>
+                    {% else %}
+                        <span>${{ budget_remaining|floatformat:2 }} left</span>
+                    {% endif %}
+                </div>
+            {% else %}
+                <div class="small opacity-90 mt-2">No budget set for this month.</div>
+                <a href="#" data-bs-toggle="modal" data-bs-target="#budgetModal" class="btn btn-sm btn-light mt-2 py-0 text-dark fw-bold" style="font-size: 0.75rem;">Set Limit</a>
+            {% endif %}
+            <i class="bi bi-speedometer kpi-icon"></i>
+        </div>
+    </div>
+
+    <!-- Card 3: Current Month Total -->
+    <div class="col-12 col-sm-6 col-xl-3">
+        <div class="kpi-card info shadow-sm">
+            <div class="kpi-title">Monthly Total ({{ current_month_name }})</div>
+            <div class="kpi-value">${{ current_month_spent|floatformat:2 }}</div>
+            <div class="small opacity-75 mt-2">
+                <i class="bi bi-calendar-event me-1"></i> Standard Monthly Tracker
+            </div>
+            <i class="bi bi-calendar-check kpi-icon"></i>
+        </div>
+    </div>
+
+    <!-- Card 4: Top Category -->
+    <div class="col-12 col-sm-6 col-xl-3">
+        <div class="kpi-card dark shadow-sm">
+            <div class="kpi-title">Top Spending Category</div>
+            {% if category_breakdown %}
+                {% with top_cat=category_breakdown.0 %}
+                    <div class="kpi-value text-truncate" style="font-size: 1.5rem;">{{ top_cat.category__name|default:"Uncategorized" }}</div>
+                    <div class="small opacity-75 mt-1">
+                        Total: <strong>${{ top_cat.total|floatformat:2 }}</strong> ({{ top_cat.count }} items)
+                    </div>
+                {% endwith %}
+            {% else %}
+                <div class="kpi-value" style="font-size: 1.3rem;">No Data</div>
+                <div class="small opacity-75 mt-1">Add expenses to see stats</div>
+            {% endif %}
+            <i class="bi bi-pie-chart kpi-icon"></i>
+        </div>
+    </div>
+</div>
+
+<!-- Analytics & Category Breakdown Row -->
+<div class="row g-4 mb-4">
+    <!-- Doughnut Chart Card -->
+    <div class="col-12 col-lg-5">
+        <div class="card card-custom h-100 p-3">
+            <div class="card-body d-flex flex-column">
+                <h5 class="fw-bold text-dark mb-3 d-flex align-items-center gap-2">
+                    <i class="bi bi-pie-chart-fill text-primary"></i> Category Distribution
+                </h5>
+                {% if category_breakdown %}
+                    <div class="position-relative my-auto py-2 d-flex justify-content-center align-items-center" style="min-height: 250px;">
+                        <canvas id="categoryDoughnutChart"></canvas>
+                    </div>
+                {% else %}
+                    <div class="text-center my-auto py-5 text-muted">
+                        <i class="bi bi-pie-chart fs-1 opacity-25 d-block mb-2"></i>
+                        <p class="mb-0">No expense records found to generate chart.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Category Breakdown Table -->
+    <div class="col-12 col-lg-7">
+        <div class="card card-custom h-100 p-3">
+            <div class="card-body">
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                    <h5 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+                        <i class="bi bi-bar-chart-line-fill text-primary"></i> Category Expenditure Summary
+                    </h5>
+                    <span class="badge bg-light text-muted border">{{ category_breakdown|length }} Categories</span>
+                </div>
+
+                {% if category_breakdown %}
+                    <div class="table-responsive" style="max-height: 280px; overflow-y: auto;">
+                        <table class="table table-hover align-middle table-borderless mb-0">
+                            <thead class="table-light sticky-top">
+                                <tr>
+                                    <th>Category</th>
+                                    <th class="text-center">Count</th>
+                                    <th class="text-end">Total Spent</th>
+                                    <th class="text-end" style="width: 100px;">Share</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in category_breakdown %}
+                                    <tr>
+                                        <td>
+                                            <div class="d-flex align-items-center gap-2">
+                                                <span class="icon-box" data-bg="{{ item.category__color|default:'#6c757d' }}" style="width: 30px; height: 30px; font-size: 0.9rem;">
+                                                    <i class="bi {{ item.category__icon|default:'bi-tag-fill' }}"></i>
+                                                </span>
+                                                <span class="fw-semibold text-dark">{{ item.category__name|default:"Uncategorized" }}</span>
+                                            </div>
+                                        </td>
+                                        <td class="text-center">
+                                            <span class="badge bg-light text-dark border">{{ item.count }}</span>
+                                        </td>
+                                        <td class="text-end fw-bold text-dark">
+                                            ${{ item.total|floatformat:2 }}
+                                        </td>
+                                        <td class="text-end">
+                                            {% if total_filtered_spent > 0 %}
+                                                <span class="small fw-semibold text-muted">
+                                                    {% widthratio item.total total_filtered_spent 100 %}%
+                                                </span>
+                                            {% else %}
+                                                0%
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-5 text-muted">
+                        <i class="bi bi-inbox fs-1 opacity-25 d-block mb-2"></i>
+                        <p class="mb-0">No categorical spending recorded yet.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Transactions Section with Search & Filter -->
+<div class="card card-custom p-3 mb-4">
+    <div class="card-body">
+        <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between mb-3 gap-2">
+            <div>
+                <h5 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+                    <i class="bi bi-receipt-cutoff text-primary"></i> Expense Transactions
+                </h5>
+                <p class="text-muted small mb-0">View and manage your recent logged expenses</p>
+            </div>
+            <div>
+                <a href="{% url 'expense_add' %}" class="btn btn-primary-gradient btn-sm rounded-pill px-3">
+                    <i class="bi bi-plus-lg me-1"></i> Add Transaction
+                </a>
+            </div>
+        </div>
+
+        <!-- Filter Form -->
+        <form method="get" class="row g-2 mb-4 bg-light p-3 rounded-3 border">
+            <div class="col-12 col-md-3">
+                <label class="form-label small fw-semibold text-muted mb-1">Search Keyword</label>
+                {{ filter_form.search }}
+            </div>
+            <div class="col-12 col-md-3">
+                <label class="form-label small fw-semibold text-muted mb-1">Category</label>
+                {{ filter_form.category }}
+            </div>
+            <div class="col-6 col-md-2">
+                <label class="form-label small fw-semibold text-muted mb-1">From Date</label>
+                {{ filter_form.start_date }}
+            </div>
+            <div class="col-6 col-md-2">
+                <label class="form-label small fw-semibold text-muted mb-1">To Date</label>
+                {{ filter_form.end_date }}
+            </div>
+            <div class="col-12 col-md-2 d-flex align-items-end gap-1">
+                <button type="submit" class="btn btn-primary w-100 btn-sm py-2">
+                    <i class="bi bi-funnel-fill me-1"></i> Filter
+                </button>
+                {% if is_filtered %}
+                    <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary btn-sm py-2" title="Clear Filters">
+                        <i class="bi bi-x-circle"></i>
+                    </a>
+                {% endif %}
+            </div>
+        </form>
+
+        <!-- Transactions Table -->
+        {% if filtered_expenses %}
+            <div class="table-responsive">
+                <table class="table table-hover align-middle table-custom mb-0 border">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Title & Description</th>
+                            <th>Category</th>
+                            <th class="text-end">Amount</th>
+                            <th class="text-center" style="width: 120px;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for expense in filtered_expenses %}
+                            <tr>
+                                <td class="text-nowrap fw-medium text-muted">
+                                    <i class="bi bi-calendar3 me-1"></i> {{ expense.date|date:"M d, Y" }}
+                                </td>
+                                <td>
+                                    <div class="fw-bold text-dark">{{ expense.title }}</div>
+                                    {% if expense.description %}
+                                        <div class="small text-muted text-truncate" style="max-width: 280px;" title="{{ expense.description }}">
+                                            {{ expense.description }}
+                                        </div>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if expense.category %}
+                                        <span class="cat-badge text-white" data-bg="{{ expense.category.color }}">
+                                            <i class="bi {{ expense.category.icon }}"></i>
+                                            {{ expense.category.name }}
+                                        </span>
+                                    {% else %}
+                                        <span class="cat-badge bg-secondary text-white">
+                                            <i class="bi bi-tag-fill"></i> Uncategorized
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end fw-extrabold fs-6 text-dark">
+                                    ${{ expense.amount|floatformat:2 }}
+                                </td>
+                                <td class="text-center text-nowrap">
+                                    <a href="{% url 'expense_edit' expense.pk %}" class="btn btn-outline-primary btn-sm rounded-circle me-1" style="width: 32px; height: 32px; padding: 0; line-height: 30px;" title="Edit Expense">
+                                        <i class="bi bi-pencil-fill"></i>
+                                    </a>
+                                    <button type="button" class="btn btn-outline-danger btn-sm rounded-circle" style="width: 32px; height: 32px; padding: 0; line-height: 30px;" data-bs-toggle="modal" data-bs-target="#deleteModal{{ expense.pk }}" title="Delete Expense">
+                                        <i class="bi bi-trash-fill"></i>
+                                    </button>
+
+                                    <!-- Delete Modal for {{ expense.title }} -->
+                                    <div class="modal fade" id="deleteModal{{ expense.pk }}" tabindex="-1" aria-hidden="true">
+                                        <div class="modal-dialog modal-dialog-centered">
+                                            <div class="modal-content rounded-4 shadow">
+                                                <div class="modal-header border-0 pb-0">
+                                                    <h5 class="modal-title text-danger fw-bold"><i class="bi bi-exclamation-triangle-fill me-2"></i> Confirm Delete</h5>
+                                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                </div>
+                                                <div class="modal-body text-start py-3">
+                                                    <p class="mb-1">Are you sure you want to delete the expense entry <strong>"{{ expense.title }}"</strong>?</p>
+                                                    <div class="alert alert-light border small mt-2">
+                                                        <strong>Amount:</strong> ${{ expense.amount|floatformat:2 }} &bull; <strong>Date:</strong> {{ expense.date }}
+                                                    </div>
+                                                </div>
+                                                <div class="modal-footer border-0 pt-0">
+                                                    <button type="button" class="btn btn-light rounded-pill px-3" data-bs-dismiss="modal">Cancel</button>
+                                                    <form method="post" action="{% url 'expense_delete' expense.pk %}" class="d-inline">
+                                                        {% csrf_token %}
+                                                        <button type="submit" class="btn btn-danger rounded-pill px-3">Delete Expense</button>
+                                                    </form>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="text-center py-5 bg-light rounded-3">
+                <i class="bi bi-journal-x fs-1 text-muted opacity-50 d-block mb-2"></i>
+                <h6 class="fw-bold text-dark">No Expenses Found</h6>
+                <p class="text-muted small mb-3">{% if is_filtered %}No records match your selected search criteria.{% else %}You have not recorded any expenses yet.{% endif %}</p>
+                <a href="{% url 'expense_add' %}" class="btn btn-primary-gradient btn-sm rounded-pill px-4">
+                    <i class="bi bi-plus-lg me-1"></i> Add Your First Expense
+                </a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Modal: Set Monthly Budget -->
+<div class="modal fade" id="budgetModal" tabindex="-1" aria-labelledby="budgetModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 shadow">
+            <div class="modal-header border-bottom">
+                <h5 class="modal-title fw-bold text-dark" id="budgetModalLabel">
+                    <i class="bi bi-piggy-bank text-primary me-2"></i> Set Monthly Target Budget
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" action="{% url 'budget_set' %}">
+                {% csrf_token %}
+                <div class="modal-body py-4">
+                    <div class="mb-3">
+                        <label for="id_month_year_input" class="form-label fw-semibold small text-muted">Select Target Month</label>
+                        {{ budget_form.month_year_input }}
+                    </div>
+                    <div class="mb-3">
+                        <label for="id_monthly_limit" class="form-label fw-semibold small text-muted">Monthly Limit ($)</label>
+                        <div class="input-group">
+                            <span class="input-group-text">$</span>
+                            {{ budget_form.monthly_limit }}
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-top bg-light rounded-bottom-4">
+                    <button type="button" class="btn btn-light rounded-pill px-3" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary-gradient rounded-pill px-4">Save Budget</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const payload = JSON.parse('{{ chart_payload_json|escapejs }}');
+        const ctx = document.getElementById('categoryDoughnutChart');
+        
+        if (ctx && payload.data.length > 0) {
+            new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: payload.labels,
+                    datasets: [{
+                        data: payload.data,
+                        backgroundColor: payload.colors,
+                        borderWidth: 2,
+                        borderColor: '#ffffff',
+                        hoverOffset: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                boxWidth: 12,
+                                padding: 15,
+                                font: {
+                                    family: 'Inter',
+                                    size: 11
+                                }
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed !== null) {
+                                        label += new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(context.parsed);
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    },
+                    cutout: '68%'
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}

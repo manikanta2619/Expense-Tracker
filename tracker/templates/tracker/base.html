@@ -1,0 +1,153 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Personal Finance & Expense Tracker{% endblock %}</title>
+    
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{% static 'tracker/css/style.css' %}">
+    
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+
+    <!-- Responsive Navigation Bar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top shadow-sm py-2">
+        <div class="container">
+            <a class="navbar-brand d-flex align-items-center gap-2 fs-4" href="{% url 'dashboard' %}">
+                <i class="bi bi-wallet2 text-primary fs-3"></i>
+                <span>FinTracker</span>
+            </a>
+            
+            <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navbarMain" aria-controls="navbarMain" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            
+            <div class="collapse navbar-collapse" id="navbarMain">
+                {% if user.is_authenticated %}
+                    <ul class="navbar-nav me-auto mb-2 mb-lg-0 gap-1 ms-lg-3">
+                        <li class="nav-item">
+                            <a class="nav-link text-white fw-medium active" href="{% url 'dashboard' %}">
+                                <i class="bi bi-speedometer2 me-1 text-primary"></i> Dashboard
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link text-white-50 fw-medium" href="{% url 'expense_add' %}">
+                                <i class="bi bi-plus-circle me-1 text-success"></i> Add Expense
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link text-white-50 fw-medium" href="{% url 'category_list' %}">
+                                <i class="bi bi-tags me-1 text-warning"></i> Categories
+                            </a>
+                        </li>
+                    </ul>
+                    
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="dropdown">
+                            <button class="btn btn-outline-light btn-sm dropdown-toggle d-flex align-items-center gap-2 rounded-pill px-3 py-1 border-secondary" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center fw-bold" style="width: 28px; height: 28px; font-size: 0.85rem;">
+                                    {{ user.username|first|upper }}
+                                </div>
+                                <span class="fw-semibold">{{ user.username }}</span>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 rounded-3 mt-2">
+                                <li>
+                                    <span class="dropdown-item-text text-muted small">Logged in as <strong>{{ user.email|default:user.username }}</strong></span>
+                                </li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li>
+                                    <form method="post" action="{% url 'logout' %}" class="d-inline">
+                                        {% csrf_token %}
+                                        <button type="submit" class="dropdown-item text-danger d-flex align-items-center gap-2">
+                                            <i class="bi bi-box-arrow-right"></i> Sign Out
+                                        </button>
+                                    </form>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                {% else %}
+                    <div class="ms-auto d-flex align-items-center gap-2">
+                        <a href="{% url 'login' %}" class="btn btn-outline-light btn-sm px-3 rounded-pill">Sign In</a>
+                        <a href="{% url 'register' %}" class="btn btn-primary-gradient btn-sm px-3 rounded-pill">Get Started</a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Container -->
+    <main class="container py-4">
+        <!-- Message Alerts -->
+        {% if messages %}
+            <div class="row">
+                <div class="col-12">
+                    {% for message in messages %}
+                        <div class="alert alert-{{ message.tags }} alert-dismissible fade show shadow-sm border-0 rounded-3 mb-3 d-flex align-items-center gap-2" role="alert">
+                            {% if message.tags == 'success' %}
+                                <i class="bi bi-check-circle-fill fs-5 text-success"></i>
+                            {% elif message.tags == 'danger' %}
+                                <i class="bi bi-exclamation-octagon-fill fs-5 text-danger"></i>
+                            {% elif message.tags == 'warning' %}
+                                <i class="bi bi-exclamation-triangle-fill fs-5 text-warning"></i>
+                            {% else %}
+                                <i class="bi bi-info-circle-fill fs-5 text-info"></i>
+                            {% endif %}
+                            <div>{{ message }}</div>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endif %}
+
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-top py-3 text-muted mt-auto">
+        <div class="container d-flex flex-column flex-sm-row align-items-center justify-content-between text-center text-sm-start gap-2">
+            <div class="small">
+                &copy; {% now "Y" %} <strong>FinTracker</strong> &bull; Personal Finance & Expense Tracker Application
+            </div>
+            <div class="small">
+                <span class="badge bg-light text-dark border"><i class="bi bi-shield-lock-fill text-primary"></i> Data Isolated to User</span>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Bootstrap 5 JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Auto-apply dynamic data-bg and data-width attributes -->
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            document.querySelectorAll('[data-bg]').forEach(function(el) {
+                el.style.backgroundColor = el.getAttribute('data-bg');
+            });
+            document.querySelectorAll('[data-width]').forEach(function(el) {
+                el.style.width = el.getAttribute('data-width');
+            });
+        });
+    </script>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

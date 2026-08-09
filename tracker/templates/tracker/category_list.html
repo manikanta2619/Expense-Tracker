@@ -1,0 +1,109 @@
+{% extends 'tracker/base.html' %}
+
+{% block title %}Manage Categories - Personal Finance Tracker{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+        <h2 class="fw-extrabold text-dark mb-1">Category Management</h2>
+        <p class="text-muted mb-0">System default categories and your custom expense tags.</p>
+    </div>
+    <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+        <i class="bi bi-arrow-left me-1"></i> Back to Dashboard
+    </a>
+</div>
+
+<div class="row g-4">
+    <!-- Custom Category Creation Form -->
+    <div class="col-12 col-lg-5">
+        <div class="card card-custom p-4 shadow-sm h-100">
+            <h5 class="fw-bold text-dark mb-3 d-flex align-items-center gap-2">
+                <i class="bi bi-plus-circle-fill text-primary"></i> Create Custom Category
+            </h5>
+
+            <form method="post" action="{% url 'category_list' %}">
+                {% csrf_token %}
+
+                <div class="mb-3">
+                    <label for="{{ form.name.id_for_label }}" class="form-label fw-semibold small text-muted">Category Name</label>
+                    {{ form.name }}
+                    {% for error in form.name.errors %}
+                        <div class="text-danger small mt-1">{{ error }}</div>
+                    {% endfor %}
+                </div>
+
+                <div class="mb-3">
+                    <label for="{{ form.icon.id_for_label }}" class="form-label fw-semibold small text-muted">Icon</label>
+                    {{ form.icon }}
+                    {% for error in form.icon.errors %}
+                        <div class="text-danger small mt-1">{{ error }}</div>
+                    {% endfor %}
+                </div>
+
+                <div class="mb-4">
+                    <label for="{{ form.color.id_for_label }}" class="form-label fw-semibold small text-muted">Badge Color</label>
+                    <div class="d-flex align-items-center gap-2">
+                        {{ form.color }}
+                        <span class="small text-muted">Pick a color code for chart & badges</span>
+                    </div>
+                    {% for error in form.color.errors %}
+                        <div class="text-danger small mt-1">{{ error }}</div>
+                    {% endfor %}
+                </div>
+
+                <button type="submit" class="btn btn-primary-gradient w-100 rounded-pill py-2 font-weight-bold">
+                    <i class="bi bi-check-circle me-1"></i> Add Category
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Category Lists -->
+    <div class="col-12 col-lg-7">
+        <div class="card card-custom p-4 shadow-sm h-100">
+            <!-- Custom Categories -->
+            <h5 class="fw-bold text-dark mb-3 d-flex align-items-center justify-content-between">
+                <span><i class="bi bi-person-gear text-success me-2"></i> Your Custom Categories</span>
+                <span class="badge bg-success rounded-pill">{{ custom_categories|length }}</span>
+            </h5>
+
+            {% if custom_categories %}
+                <div class="d-flex flex-wrap gap-2 mb-4">
+                    {% for cat in custom_categories %}
+                        <div class="d-inline-flex align-items-center gap-2 p-2 px-3 rounded-pill text-white shadow-sm" data-bg="{{ cat.color }}" style="font-size: 0.9rem;">
+                            <i class="bi {{ cat.icon }}"></i>
+                            <span class="fw-semibold">{{ cat.name }}</span>
+                            <form method="post" action="{% url 'category_delete' cat.pk %}" class="d-inline ms-1">
+                                {% csrf_token %}
+                                <button type="submit" class="btn-close btn-close-white" style="font-size: 0.65rem;" title="Delete Custom Category" onclick="return confirm('Delete category {{ cat.name }}?');"></button>
+                            </form>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="alert alert-light border small text-muted mb-4">
+                    No custom categories created yet. Use the form on the left to add your own categories!
+                </div>
+            {% endif %}
+
+            <hr class="my-3">
+
+            <!-- System Default Categories -->
+            <h5 class="fw-bold text-dark mb-3 d-flex align-items-center justify-content-between">
+                <span><i class="bi bi-shield-check text-primary me-2"></i> System Default Categories</span>
+                <span class="badge bg-secondary rounded-pill">{{ default_categories|length }}</span>
+            </h5>
+
+            <div class="d-flex flex-wrap gap-2">
+                {% for cat in default_categories %}
+                    <div class="d-inline-flex align-items-center gap-2 p-2 px-3 rounded-pill text-white shadow-sm" data-bg="{{ cat.color }}" style="font-size: 0.9rem;">
+                        <i class="bi {{ cat.icon }}"></i>
+                        <span class="fw-semibold">{{ cat.name }}</span>
+                        <span class="badge bg-white text-dark ms-1" style="font-size: 0.65rem;">Default</span>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
