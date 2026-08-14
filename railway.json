@@ -1,0 +1,10 @@
+{
+  "build": {
+    "builder": "nixpacks"
+  },
+  "deploy": {
+    "startCommand": "python manage.py migrate && gunicorn expense_tracker.wsgi:application",
+    "restartPolicyCondition": "on-failure",
+    "restartPolicyMaxRetries": 5
+  }
+}
